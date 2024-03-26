@@ -1,5 +1,5 @@
-use crate::traits::Command;
 use crate::csi;
+use crate::traits::Command;
 use std::io;
 
 #[derive(Debug)]

@@ -1,15 +1,9 @@
 use terminal_manipulator::{
+    cursor::{Hide, MoveTo},
     queue,
-    cursor::{MoveTo, Hide},
     style::Print,
-    terminal::{
-        window_size,
-        EnterAlternateScreen,
-        LeaveAlternateScreen,
-        Clear,
-        ClearType
-    },
-    traits::Command
+    terminal::{window_size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
+    traits::Command,
 };
 
 use std::io::Write;
@@ -19,19 +13,17 @@ use std::time::{Duration, Instant};
 fn main() -> std::io::Result<()> {
     let mut stdout = std::io::stdout();
 
-    queue!(&mut stdout, EnterAlternateScreen)?;
-    queue!(&mut stdout, Hide)?;
+    queue!(&mut stdout, EnterAlternateScreen);
+    queue!(&mut stdout, Hide);
 
     let now = Instant::now();
 
     loop {
         let window = window_size().unwrap();
-        queue!(&mut stdout,
+        queue!(
+            &mut stdout,
             Clear(ClearType::All),
-            MoveTo(
-                (window.rows / 2),
-                (window.columns / 2 - 10)
-            ),
+            MoveTo(window.rows / 2, window.columns / 2 - 10),
             Print(format!("Times Elapsed: {:?}", now.elapsed().as_secs())),
         );
         stdout.flush()?;
@@ -43,7 +35,7 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    queue!(&mut stdout, LeaveAlternateScreen)?;
+    queue!(&mut stdout, LeaveAlternateScreen);
     stdout.flush()?;
 
     Ok(())

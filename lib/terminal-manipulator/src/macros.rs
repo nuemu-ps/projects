@@ -6,6 +6,6 @@ macro_rules! csi {
 #[macro_export]
 macro_rules! queue {
     ($writer:expr $(, $command:expr)* $(,)?) => {
-        $($command.write_ansi($writer);)*
+        $($command.write_ansi($writer)?;)*
     }
 }

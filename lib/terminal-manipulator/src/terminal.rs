@@ -1,6 +1,4 @@
-use libc::{
-    winsize, ioctl, STDOUT_FILENO, TIOCGWINSZ
-};
+use libc::{ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
 use std::io;
 
 use crate::{csi, traits::Command};
@@ -55,7 +53,7 @@ impl Command for LeaveAlternateScreen {
 }
 
 pub enum ClearType {
-    All
+    All,
 }
 
 pub struct Clear(pub ClearType);
@@ -64,7 +62,6 @@ impl Command for Clear {
     fn write_ansi(&self, writer: &mut impl io::Write) -> io::Result<()> {
         match self.0 {
             ClearType::All => write!(writer, csi!("2J")),
-            _ => Ok(())
         }
     }
 }
