@@ -6,7 +6,8 @@ fn main() -> std::io::Result<()> {
     enter_raw_mode()?;
 
     loop {
-        if poll(core::time::Duration::new(1, 0)).is_ok() {
+        if poll(core::time::Duration::new(10, 0)).is_ok() {
+            println!("sa");
             let key_code = read()?;
 
             if key_code == KeyCode::Esc {

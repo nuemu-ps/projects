@@ -3,19 +3,37 @@ const TTY_BUFFER_SIZE: usize = 1_024;
 use crate::parser::{parse, KeyCode};
 use crate::terminal::get_tty_file_descriptor;
 
-#[derive(Copy, Clone)]
 struct EventSource {
     tty: i32,
+    sig_winch: UnixStream,
 }
 
 use std::sync::{Mutex, MutexGuard};
 
 static EVENT_SOURCE: Mutex<Option<EventSource>> = Mutex::new(None);
 
+use std::os::unix::net::UnixStream;
+use std::os::fd::AsRawFd;
+use signal_hook::low_level::pipe;
+
+fn nonblocking_unix_pair() -> std::io::Result<(UnixStream, UnixStream)> {
+    let (receiver, sender) = UnixStream::pair()?;
+    receiver.set_nonblocking(true)?;
+    sender.set_nonblocking(true)?;
+    Ok((receiver, sender))
+}
+
 impl EventSource {
     fn new() -> std::io::Result<Self> {
         Ok(EventSource {
             tty: get_tty_file_descriptor()?,
+            sig_winch: {
+                let (receiver, sender) = nonblocking_unix_pair()?;
+
+                pipe::register(libc::SIGWINCH, sender)?;
+
+                receiver
+            },
         })
     }
 
@@ -50,7 +68,7 @@ pub fn read() -> std::io::Result<KeyCode> {
     let event_source = get_or_insert_event_source()?;
     let mut buffer = [0u8; TTY_BUFFER_SIZE];
 
-    let result = (*event_source).unwrap().read(&mut buffer)?;
+    let result = event_source.as_ref().unwrap().read(&mut buffer)?;
 
     let key_code = parse(&buffer[..(result as usize)])?;
 
@@ -61,22 +79,27 @@ pub fn poll(duration: core::time::Duration) -> std::io::Result<()> {
     let event_source = get_or_insert_event_source()?;
 
     let pollfd = libc::pollfd {
-        fd: (*event_source).unwrap().tty,
+        fd: event_source.as_ref().unwrap().tty,
         events: libc::POLLIN,
         revents: 0,
     };
 
-    let fds = vec![pollfd, pollfd].as_mut_ptr();
+    let pollfd2 = libc::pollfd {
+        fd: event_source.as_ref().unwrap().sig_winch.as_raw_fd(),
+        events: libc::POLLIN,
+        revents: 0,
+    };
 
     if unsafe {
         libc::poll(
-            fds,
+            [pollfd, pollfd2].as_mut_ptr(),
             1 as libc::nfds_t,
             duration.as_millis() as libc::c_int,
         )
     } < 0
     {
-        panic!("{}", std::io::Error::last_os_error());
+        let err = std::io::Error::last_os_error();
+        panic!("{} {}", err, err.kind());
     } else {
         Ok(())
     }
