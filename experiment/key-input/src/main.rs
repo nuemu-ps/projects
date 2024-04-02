@@ -7,7 +7,7 @@ fn main() -> std::io::Result<()> {
 
     loop {
         if poll(core::time::Duration::new(10, 0)).is_ok() {
-            println!("sa");
+            println!("poll");
             let key_code = read()?;
 
             if key_code == KeyCode::Esc {

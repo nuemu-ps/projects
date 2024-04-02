@@ -14,7 +14,17 @@ static EVENT_SOURCE: Mutex<Option<EventSource>> = Mutex::new(None);
 
 use std::os::unix::net::UnixStream;
 use std::os::fd::AsRawFd;
-use signal_hook::low_level::pipe;
+use std::ops::Deref;
+
+static SIGNAL_SOURCE: Mutex<Option<i32>> = Mutex::new(None);
+
+extern "C" fn handler(_sig: libc::c_int, _info: *mut libc::siginfo_t, _data: *mut libc::c_void) {
+    // let signal_source = get_or_insert_signal_source(None).unwrap();
+    // let data = b"X" as *const _ as *const _;
+
+    // println!("{}", signal_source.deref().unwrap());
+    // unsafe { libc::write(signal_source.deref().unwrap(), data, 1) };
+}
 
 fn nonblocking_unix_pair() -> std::io::Result<(UnixStream, UnixStream)> {
     let (receiver, sender) = UnixStream::pair()?;
@@ -30,7 +40,14 @@ impl EventSource {
             sig_winch: {
                 let (receiver, sender) = nonblocking_unix_pair()?;
 
-                pipe::register(libc::SIGWINCH, sender)?;
+                // drop(get_or_insert_signal_source(Some(sender.as_raw_fd()))?);
+
+                let mut new: libc::sigaction = unsafe { core::mem::zeroed() };
+                new.sa_sigaction = handler as usize;
+                new.sa_flags = libc::SA_SIGINFO;
+                let mut old: libc::sigaction = unsafe { core::mem::zeroed() };
+
+                unsafe { libc::sigaction(libc::SIGWINCH, &new, &mut old) };
 
                 receiver
             },
@@ -47,7 +64,11 @@ impl EventSource {
         };
 
         if result < 0 {
-            panic!("{}", std::io::Error::last_os_error());
+            let err = std::io::Error::last_os_error();
+            match err.kind() {
+                std::io::ErrorKind::Interrupted => Ok(1),
+                _ => panic!("{}", err)
+            }
         } else {
             Ok(result)
         }
@@ -60,6 +81,16 @@ fn get_or_insert_event_source() -> std::io::Result<MutexGuard<'static, Option<Ev
             *optional_event_source = Some(EventSource::new()?);
         }
         return Ok(optional_event_source);
+    }
+    panic!("{}", std::io::Error::last_os_error())
+}
+
+fn get_or_insert_signal_source(fd: Option<i32>) -> std::io::Result<MutexGuard<'static, Option<i32>>> {
+    if let Ok(mut optional_signal_source) = SIGNAL_SOURCE.lock() {
+        if optional_signal_source.is_none() && fd.is_some() {
+            *optional_signal_source = Some(fd.unwrap());
+        }
+        return Ok(optional_signal_source);
     }
     panic!("{}", std::io::Error::last_os_error())
 }
@@ -84,22 +115,25 @@ pub fn poll(duration: core::time::Duration) -> std::io::Result<()> {
         revents: 0,
     };
 
-    let pollfd2 = libc::pollfd {
-        fd: event_source.as_ref().unwrap().sig_winch.as_raw_fd(),
-        events: libc::POLLIN,
-        revents: 0,
-    };
+    // let pollfd2 = libc::pollfd {
+    //     fd: event_source.as_ref().unwrap().sig_winch.as_raw_fd(),
+    //     events: libc::POLLIN,
+    //     revents: 0,
+    // };
 
     if unsafe {
         libc::poll(
-            [pollfd, pollfd2].as_mut_ptr(),
+            [pollfd].as_mut_ptr(),
             1 as libc::nfds_t,
             duration.as_millis() as libc::c_int,
         )
     } < 0
     {
         let err = std::io::Error::last_os_error();
-        panic!("{} {}", err, err.kind());
+        match err.kind() {
+            std::io::ErrorKind::Interrupted => Ok(()),
+            _ => panic!("{}", err)
+        }
     } else {
         Ok(())
     }
