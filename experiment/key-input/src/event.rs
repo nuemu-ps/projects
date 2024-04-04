@@ -12,20 +12,10 @@ use std::sync::{Mutex, MutexGuard};
 
 static EVENT_SOURCE: Mutex<Option<EventSource>> = Mutex::new(None);
 
-use std::os::unix::net::UnixStream;
 use std::os::fd::AsRawFd;
+use std::os::unix::net::UnixStream;
 
-static mut SIGNAL_SOURCE: Option<UnixStream> = None;
-
-extern "C" fn handler(_sig: libc::c_int, _info: *mut libc::siginfo_t, _data: *mut libc::c_void) {
-    let signal_source = unsafe { SIGNAL_SOURCE.as_ref().unwrap().as_raw_fd() };
-
-    unsafe {
-        let data = b"X" as *const _ as *const _;
-        libc::write(signal_source, data, 1);
-        libc::send(signal_source, data, 1, libc::MSG_DONTWAIT);
-    };
-}
+use signal_manipulator::self_pipe::register;
 
 fn nonblocking_unix_pair() -> std::io::Result<(UnixStream, UnixStream)> {
     let (receiver, sender) = UnixStream::pair()?;
@@ -41,14 +31,7 @@ impl EventSource {
             sig_winch: {
                 let (receiver, sender) = nonblocking_unix_pair()?;
 
-                insert_signal_source(sender)?;
-
-                let mut new: libc::sigaction = unsafe { core::mem::zeroed() };
-                new.sa_sigaction = handler as usize;
-                new.sa_flags = libc::SA_SIGINFO;
-                let mut old: libc::sigaction = unsafe { core::mem::zeroed() };
-
-                unsafe { libc::sigaction(libc::SIGWINCH, &new, &mut old) };
+                register(libc::SIGWINCH, sender);
 
                 receiver
             },
@@ -68,7 +51,7 @@ impl EventSource {
             let err = std::io::Error::last_os_error();
             match err.kind() {
                 std::io::ErrorKind::Interrupted => Ok(1),
-                _ => panic!("{}", err)
+                _ => panic!("{}", err),
             }
         } else {
             Ok(result)
@@ -84,11 +67,6 @@ fn get_or_insert_event_source() -> std::io::Result<MutexGuard<'static, Option<Ev
         return Ok(optional_event_source);
     }
     panic!("{}", std::io::Error::last_os_error())
-}
-
-fn insert_signal_source(fd: UnixStream) -> std::io::Result<()> {
-    unsafe { SIGNAL_SOURCE = Some(fd) };
-    Ok(())
 }
 
 pub fn read() -> std::io::Result<KeyCode> {
@@ -131,7 +109,7 @@ pub fn poll(duration: core::time::Duration) -> std::io::Result<()> {
         println!("{:?} {:?}", fds[0].revents, fds[1].revents);
         match err.kind() {
             std::io::ErrorKind::Interrupted => Ok(()),
-            _ => panic!("{}", err)
+            _ => panic!("{}", err),
         }
     } else {
         println!("{:?} {:?}", fds[0].revents, fds[1].revents);
