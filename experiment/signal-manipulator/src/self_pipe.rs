@@ -1,22 +1,23 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-struct Signal
-{
-    action: Box<dyn Fn() -> ()>
+struct Signal {
+    action: Box<dyn Fn() -> ()>,
 }
 
 struct GlobalData {
-    signals: HashMap<libc::c_int, Signal>
+    signals: HashMap<libc::c_int, Signal>,
 }
 
 static mut GLOBAL_DATA: OnceLock<GlobalData> = OnceLock::new();
 
 impl GlobalData {
     fn get() -> &'static Self {
-        unsafe { GLOBAL_DATA.get_or_init(|| GlobalData {
-            signals: HashMap::new()
-        })}
+        unsafe {
+            GLOBAL_DATA.get_or_init(|| GlobalData {
+                signals: HashMap::new(),
+            })
+        }
     }
 }
 
@@ -42,8 +43,8 @@ where
         GLOBAL_DATA.get_mut().unwrap().signals.insert(
             signal,
             Signal {
-                action: Box::new(action)
-            }
+                action: Box::new(action),
+            },
         )
     };
 
@@ -52,10 +53,5 @@ where
     new.sa_flags = libc::SA_SIGINFO;
     let mut old: libc::sigaction = unsafe { core::mem::zeroed() };
 
-    unsafe {
-        libc::sigaction(
-            libc::SIGWINCH,
-            &new,
-            &mut old)
-        };
+    unsafe { libc::sigaction(libc::SIGWINCH, &new, &mut old) };
 }

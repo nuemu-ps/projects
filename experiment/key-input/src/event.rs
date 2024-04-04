@@ -12,8 +12,8 @@ use std::sync::{Mutex, MutexGuard};
 
 static EVENT_SOURCE: Mutex<Option<EventSource>> = Mutex::new(None);
 
-use std::os::unix::net::UnixStream;
 use std::os::fd::AsRawFd;
+use std::os::unix::net::UnixStream;
 
 use signal_manipulator::self_pipe::register;
 
@@ -51,7 +51,7 @@ impl EventSource {
             let err = std::io::Error::last_os_error();
             match err.kind() {
                 std::io::ErrorKind::Interrupted => Ok(1),
-                _ => panic!("{}", err)
+                _ => panic!("{}", err),
             }
         } else {
             Ok(result)
@@ -109,7 +109,7 @@ pub fn poll(duration: core::time::Duration) -> std::io::Result<()> {
         println!("{:?} {:?}", fds[0].revents, fds[1].revents);
         match err.kind() {
             std::io::ErrorKind::Interrupted => Ok(()),
-            _ => panic!("{}", err)
+            _ => panic!("{}", err),
         }
     } else {
         println!("{:?} {:?}", fds[0].revents, fds[1].revents);
