@@ -97,22 +97,29 @@ pub fn poll(duration: core::time::Duration) -> std::io::Result<()> {
 
     let mut fds = [pollfd, pollfd2];
 
-    if unsafe {
-        libc::poll(
-            fds.as_mut_ptr(),
-            1 as libc::nfds_t,
-            duration.as_millis() as libc::c_int,
-        )
-    } < 0
-    {
+    if unsafe { crate::poll::poll(&mut fds, duration).is_err() } {
         let err = std::io::Error::last_os_error();
-        println!("{:?} {:?}", fds[0].revents, fds[1].revents);
         match err.kind() {
             std::io::ErrorKind::Interrupted => Ok(()),
             _ => panic!("{}", err),
         }
     } else {
-        println!("{:?} {:?}", fds[0].revents, fds[1].revents);
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        println!(
+            "IN {:?} {:?}",
+            fds[0].revents == libc::POLLIN,
+            fds[1].revents == libc::POLLIN
+        );
+        println!(
+            "OUT {:?} {:?}",
+            fds[0].revents == libc::POLLOUT,
+            fds[1].revents == libc::POLLOUT
+        );
+        println!(
+            "ERR {:?} {:?}",
+            fds[0].revents == libc::POLLERR,
+            fds[1].revents == libc::POLLERR
+        );
         Ok(())
     }
 }
