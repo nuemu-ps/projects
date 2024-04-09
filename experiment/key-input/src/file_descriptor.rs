@@ -1,14 +1,12 @@
 use std::os::fd::RawFd;
 
 pub struct FileDescritor {
-    pub fd: RawFd
+    pub fd: RawFd,
 }
 
 impl FileDescritor {
     pub fn new(fd: RawFd) -> Self {
-        Self {
-            fd
-        }
+        Self { fd }
     }
 
     pub fn read(&self, buffer: &mut [u8]) -> std::io::Result<usize> {
