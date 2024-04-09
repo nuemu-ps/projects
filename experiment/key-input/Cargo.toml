@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2"
-libc-wrapper = { path = "../libc-wrapper" }
-signal-manipulator = { path = "../signal-manipulator" }
+libc-wrapper = { path = "../../lib/libc-wrapper" }
+signal-manipulator = { path = "../../lib/signal-manipulator" }
