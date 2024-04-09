@@ -20,7 +20,7 @@ fn poll_impl(fds: &mut [Pollfd], duration: Option<core::time::Duration>) -> std:
 }
 
 /*
-    There may exist some strange behavior in MacOS poll implementation.
+    There may exist some bug in MacOS poll implementation.
 */
 #[cfg(target_os = "macos")]
 use crate::{
