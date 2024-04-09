@@ -2,12 +2,13 @@ use terminal_manipulator::{
     cursor::{Hide, MoveTo},
     queue,
     style::Print,
-    terminal::{window_size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{enter_raw_mode, window_size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
     traits::Command,
+    parser::{KeyCode},
+    event::{poll, read, Event},
 };
 
 use std::io::Write;
-use std::thread;
 use std::time::{Duration, Instant};
 
 fn main() -> std::io::Result<()> {
@@ -15,6 +16,8 @@ fn main() -> std::io::Result<()> {
 
     queue!(&mut stdout, EnterAlternateScreen);
     queue!(&mut stdout, Hide);
+
+    enter_raw_mode()?;
 
     let now = Instant::now();
 
@@ -25,13 +28,20 @@ fn main() -> std::io::Result<()> {
             Clear(ClearType::All),
             MoveTo(window.rows / 2, window.columns / 2 - 10),
             Print(format!("Times Elapsed: {:?}", now.elapsed().as_secs())),
+            MoveTo(window.rows / 2 + 2, window.columns / 2 - 11),
+            Print(format!("Press ESC to Close.")),
         );
         stdout.flush()?;
 
-        thread::sleep(Duration::from_millis(1));
-
-        if now.elapsed().as_secs() == 11 {
-            break;
+        if poll(Some(Duration::new(1, 0)))? {
+            match read()? {
+                Event::KeyPress(key_code) => {
+                    if key_code == KeyCode::Esc {
+                        break;
+                    }
+                },
+                Event::WindowResize => {}
+            }
         }
     }
 

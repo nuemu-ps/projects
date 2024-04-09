@@ -1,5 +1,5 @@
 [package]
-name = "key-input"
+name = "libc-wrapper"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,4 +7,3 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2"
-signal-manipulator = { path = "../signal-manipulator" }
