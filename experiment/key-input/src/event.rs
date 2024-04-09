@@ -6,6 +6,7 @@ use crate::parser::{parse, KeyCode};
 use libc_wrapper::{Pollfd, POLLIN};
 
 use std::io::Result;
+use std::time::Instant;
 
 pub enum Event {
     KeyPress(KeyCode),
@@ -57,7 +58,7 @@ pub fn read() -> Result<Event> {
     }
 }
 
-pub fn poll(duration: Option<core::time::Duration>) -> std::io::Result<()> {
+pub fn poll(duration: Option<core::time::Duration>) -> std::io::Result<bool> {
     let event_source = get_or_insert_event_source()?;
 
     let tty_pollfd = Pollfd {
@@ -74,13 +75,20 @@ pub fn poll(duration: Option<core::time::Duration>) -> std::io::Result<()> {
 
     let mut fds = [tty_pollfd, sig_winch_pollfd];
 
-    if libc_wrapper::poll(&mut fds, duration).is_err() {
-        let err = std::io::Error::last_os_error();
-        match err.kind() {
-            std::io::ErrorKind::Interrupted => Ok(()),
-            _ => Err(err.into()),
+    let start = Instant::now();
+
+    while start.elapsed() < duration.unwrap_or(core::time::Duration::from_millis(10)) {
+        if libc_wrapper::poll(&mut fds, duration).is_err() {
+            let err = std::io::Error::last_os_error();
+            match err.kind() {
+                std::io::ErrorKind::Interrupted => return Ok(false),
+                _ => return Err(err.into()),
+            }
+        } else {
+            if fds[0].revents & POLLIN != 0 || fds[1].revents & POLLIN != 0 {
+                return Ok(true)
+            }
         }
-    } else {
-        Ok(())
     }
+    Ok(false)
 }

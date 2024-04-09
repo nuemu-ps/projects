@@ -6,7 +6,8 @@ fn main() -> std::io::Result<()> {
     enter_raw_mode()?;
 
     loop {
-        if poll(Some(core::time::Duration::new(10, 0))).is_ok() {
+        if poll(Some(core::time::Duration::new(1, 0)))? {
+            println!("poll");
             let event = read()?;
 
             match event {
