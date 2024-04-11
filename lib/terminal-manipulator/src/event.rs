@@ -46,7 +46,7 @@ pub fn read() -> Result<Event> {
             let result = event_source.as_ref().unwrap().tty.read(&mut buffer)?;
             let key_code = parse(&buffer[..(result as usize)])?;
 
-            return Ok(Event::KeyPress(key_code));
+            return Ok(Event::KeyPress(key_code.unwrap()));
         }
 
         if fds[1].revents & POLLIN != 0 {
