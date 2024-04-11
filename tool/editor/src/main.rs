@@ -26,9 +26,9 @@ fn main() -> std::io::Result<()> {
         queue!(
             &mut stdout,
             Clear(ClearType::All),
-            MoveTo(window.rows / 2, window.columns / 2 - 10),
+            MoveTo(window.rows / 2, window.cols / 2 - 10),
             Print(format!("Times Elapsed: {:?}", now.elapsed().as_secs())),
-            MoveTo(window.rows / 2 + 2, window.columns / 2 - 11),
+            MoveTo(window.rows / 2 + 2, window.cols / 2 - 11),
             Print(format!("Press ESC to Close.")),
         );
         stdout.flush()?;
@@ -40,7 +40,7 @@ fn main() -> std::io::Result<()> {
                         break;
                     }
                 },
-                Event::WindowResize => {}
+                Event::WindowResize(_window_size) => {}
             }
         }
     }

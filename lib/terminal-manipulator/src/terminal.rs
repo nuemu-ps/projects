@@ -37,13 +37,13 @@ pub fn get_tty_file_descriptor() -> std::io::Result<i32> {
 #[derive(Debug)]
 pub struct WindowSize {
     pub rows: u16,
-    pub columns: u16,
+    pub cols: u16,
 }
 
 impl From<winsize> for WindowSize {
     fn from(size: winsize) -> WindowSize {
         WindowSize {
-            columns: size.ws_col,
+            cols: size.ws_col,
             rows: size.ws_row,
         }
     }
