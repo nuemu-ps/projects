@@ -2,6 +2,7 @@ const TTY_BUFFER_SIZE: usize = 1_024;
 
 use crate::event_source::get_or_insert_event_source;
 use crate::parser::{parse, KeyCode};
+use crate::terminal::{window_size, WindowSize};
 
 use libc_wrapper::{Pollfd, POLLIN};
 
@@ -10,7 +11,7 @@ use std::time::Instant;
 
 pub enum Event {
     KeyPress(KeyCode),
-    WindowResize,
+    WindowResize(WindowSize),
 }
 
 pub fn read() -> Result<Event> {
@@ -45,7 +46,7 @@ pub fn read() -> Result<Event> {
             let result = event_source.as_ref().unwrap().tty.read(&mut buffer)?;
             let key_code = parse(&buffer[..(result as usize)])?;
 
-            return Ok(Event::KeyPress(key_code));
+            return Ok(Event::KeyPress(key_code.unwrap()));
         }
 
         if fds[1].revents & POLLIN != 0 {
@@ -53,7 +54,7 @@ pub fn read() -> Result<Event> {
 
             let _ = event_source.as_ref().unwrap().sig_winch.read(&mut buffer)?;
 
-            return Ok(Event::WindowResize);
+            return Ok(Event::WindowResize(window_size()?));
         }
     }
 }
